@@ -1,0 +1,286 @@
+openapi: 3.0.0
+info:
+  title: Task Management API
+  version: 1.0.0
+  description: API documentation for managing tasks and users in the Task Management system.
+
+servers:
+  - url: http://localhost:${PORT}
+    description: Local development server
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+paths:
+  /auth/register:
+    post:
+      summary: Register a new user
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: "John Doe"
+                email:
+                  type: string
+                  example: "johndoe@example.com"
+                password:
+                  type: string
+                  example: "securepassword123"
+                role:
+                  type: string
+                  enum: [user, admin]
+                  example: "user"
+      responses:
+        201:
+          description: User registered successfully
+        400:
+          description: Email already exists
+        500:
+          description: Internal server error
+
+  /auth/login:
+    post:
+      summary: Log in to your account
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  example: "johndoe@example.com"
+                password:
+                  type: string
+                  example: "securepassword123"
+      responses:
+        200:
+          description: Login successful with JWT token
+        400:
+          description: Invalid credentials
+        500:
+          description: Internal server error
+
+  /task/create:
+    post:
+      summary: Create a new task
+      security:
+        - BearerAuth: []
+      tags:
+        - Tasks
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  example: "Complete backend assignment"
+                description:
+                  type: string
+                  example: "Finish the backend API for task management"
+                status:
+                  type: string
+                  enum: [pending, in-progress, completed]
+                  example: "pending"
+                priority:
+                  type: string
+                  enum: [low, medium, high]
+                  example: "high"
+                dueDate:
+                  type: string
+                  format: date
+                  example: "2024-12-01"
+      responses:
+        201:
+          description: Task created successfully
+        400:
+          description: Bad request
+        401:
+          description: Unauthorized
+
+  /task:
+    get:
+      summary: Fetch all tasks with filters
+      security:
+        - BearerAuth: []
+      tags:
+        - Tasks
+      parameters:
+        - name: status
+          in: query
+          description: Filter by task status
+          schema:
+            type: string
+            enum: [pending, in-progress, completed]
+        - name: priority
+          in: query
+          description: Filter by task priority
+          schema:
+            type: string
+            enum: [low, medium, high]
+        - name: page
+          in: query
+          description: Page number for pagination
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          description: Number of tasks per page
+          schema:
+            type: integer
+      responses:
+        200:
+          description: List of tasks retrieved successfully
+        401:
+          description: Unauthorized
+        500:
+          description: Internal server error
+
+  /task/{id}:
+    get:
+      summary: Get a task by ID
+      security:
+        - BearerAuth: []
+      tags:
+        - Tasks
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Task ID
+          schema:
+            type: string
+      responses:
+        200:
+          description: Task retrieved successfully
+        404:
+          description: Task not found
+        401:
+          description: Unauthorized
+
+    put:
+      summary: Update a task by 
+      security:
+        - BearerAuth: []
+      tags:
+        - Tasks
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Task ID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  example: "Update backend assignment"
+                description:
+                  type: string
+                  example: "Modify task to include more features"
+                status:
+                  type: string
+                  enum: [pending, in-progress, completed]
+                  example: "in-progress"
+                priority:
+                  type: string
+                  enum: [low, medium, high]
+                  example: "medium"
+                dueDate:
+                  type: string
+                  format: date
+                  example: "2024-12-10"
+      responses:
+        200:
+          description: Task updated successfully
+        404:
+          description: Task not found
+        400:
+          description: Invalid input
+        401:
+          description: Unauthorized
+
+    delete:
+      summary: Delete a task by ID
+      security:
+        - BearerAuth: []
+      tags:
+        - Tasks
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Task ID
+          schema:
+            type: string
+      responses:
+        200:
+          description: Task deleted successfully
+        404:
+          description: Task not found
+        401:
+          description: Unauthorized
+
+  /admin/users:
+    get:
+      summary: Get all users (Admin only)
+      security:
+        - BearerAuth: []
+      tags:
+        - Admin
+      responses:
+        200:
+          description: List of users retrieved successfully
+        403:
+          description: Forbidden (not an admin)
+        401:
+          description: Unauthorized
+        500:
+          description: Internal server error
+
+  /admin/tasks/{id}:
+    delete:
+      summary: Delete a task by ID (Admin only)
+      security:
+        - BearerAuth: []
+      tags:
+        - Admin
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Task ID
+          schema:
+            type: string
+      responses:
+        200:
+          description: Task deleted successfully
+        404:
+          description: Task not found
+        403:
+          description: Forbidden (not an admin)
+        401:
+          description: Unauthorized
