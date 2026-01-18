@@ -1,6 +1,6 @@
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   workflow_dispatch:
 jobs:
   ci:
@@ -13,7 +13,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+          cache: "npm"
 
       - name: Install dependencies
         run: npm install
@@ -25,21 +25,49 @@ jobs:
       - name: Run unit tests
         run: npm test || echo "No tests added yet"
 
-      - name: Build app
-        run: npm run start --if-present || echo "Build step skipped"
+      - name: Build / prepare app
+        run: |
+          if npm run build --if-present; then
+            echo "Build completed"
+          else
+            echo "No build script; skipping start to avoid running the server in CI"
+          fi
 
       - name: Build Docker image
         run: docker build -t task-backend:latest .
 
       - name: Run container
+        env:
+          MONGO_DB_URL: ${{ secrets.MONGO_DB_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          PORT: "3000"
         run: |
-          docker run -d -p 3000:3000 task-backend:latest
-          sleep 10
+          docker run -d -p 3000:3000 \
+            -e MONGO_DB_URL="$MONGO_DB_URL" \
+            -e JWT_SECRET="$JWT_SECRET" \
+            -e PORT="$PORT" \
+            task-backend:latest
+          # wait for the app to be healthy (timeout after ~60s)
+          for i in {1..12}; do
+            if curl -sSf http://localhost:3000/health >/dev/null; then
+              echo "App is healthy"
+              exit 0
+            fi
+            echo "Waiting for app... ($i)"
+            sleep 5
+          done
+          echo "App did not become healthy in time"
+          exit 1
 
       - name: Login to DockerHub
-        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        run: echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
 
       - name: Push Docker image
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
         run: |
-          docker tag task-backend:latest ${{ secrets.DOCKER_USERNAME }}/task-backend:latest
-          docker push ${{ secrets.DOCKER_USERNAME }}/task-backend:latest
+          docker tag task-backend:latest $DOCKER_USERNAME/task-backend:latest
+          docker push $DOCKER_USERNAME/task-backend:latest
