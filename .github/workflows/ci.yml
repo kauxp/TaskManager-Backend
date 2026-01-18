@@ -16,14 +16,14 @@ jobs:
           cache: "npm"
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Basic lint check
         run: |
           npx eslint . || echo "Lint warnings detected"
 
       - name: Run unit tests
-        run: npm test || echo "No tests added yet"
+        run: npm test
 
       - name: Build / prepare app
         run: |
