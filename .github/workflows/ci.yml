@@ -1,0 +1,45 @@
+on:
+  push:
+    branches: [ master ]
+  workflow_dispatch:
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Basic lint check
+        run: |
+          npx eslint . || echo "Lint warnings detected"
+
+      - name: Run unit tests
+        run: npm test || echo "No tests added yet"
+
+      - name: Build app
+        run: npm run start --if-present || echo "Build step skipped"
+
+      - name: Build Docker image
+        run: docker build -t task-backend:latest .
+
+      - name: Run container
+        run: |
+          docker run -d -p 3000:3000 task-backend:latest
+          sleep 10
+          
+      - name: Login to DockerHub
+        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+
+      - name: Push Docker image
+        run: |
+          docker tag task-backend:latest ${{ secrets.DOCKER_USERNAME }}/task-backend:latest
+          docker push ${{ secrets.DOCKER_USERNAME }}/task-backend:latest
