@@ -3,6 +3,7 @@ kind: Service
 metadata:
   name: task-backend-service
 spec:
+  # Use NodePort for local/on-prem, LoadBalancer for cloud providers
   type: NodePort
   selector:
     app: task-backend
